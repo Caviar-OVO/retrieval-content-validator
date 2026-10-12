@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # --- Enumerations ----------------------------------------------------------
@@ -138,6 +138,20 @@ class EvidenceRef(BaseModel):
     traffic: Optional[float] = None
     negation: Optional[str] = None
     stance: Optional[str] = None
+
+    @field_validator("reliability", "similarity", "coverage", mode="before")
+    @classmethod
+    def _clamp_unit_interval(cls, value):
+        """Clamp [0,1] scores instead of raising on an out-of-range float.
+
+        These fields carry a *graded* similarity/reliability signal; a stray
+        negative (anti-correlated embeddings) or >1 micro-float must not abort
+        the whole report. Clamping keeps the invariant while letting the
+        pipeline stay total. Non-numeric input is left to Pydantic to reject.
+        """
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return 0.0 if value < 0.0 else (1.0 if value > 1.0 else value)
+        return value
 
 
 class Evidence(BaseModel):

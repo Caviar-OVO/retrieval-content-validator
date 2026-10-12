@@ -332,8 +332,10 @@ fields: rva.models.EvidenceRef
 ```
 
 `source_id` · `title` · `url` · `domain` · `reliability` · `tier` · `similarity` · `coverage` · `shared_tokens` · `traffic` · `negation` · `stance`
-> `similarity` / `coverage` 取值恒为 `[0, 1]`：原始余弦相似度先钳到 0 下限，再写入报告
-> （反相关的词分布可能算出负值，钳位避免把「比无关还低」的分数泄进契约模型）。
+
+> `similarity` / `coverage` / `reliability` 取值恒为 `[0, 1]`：原始余弦相似度在源头钳到
+> `[0, 1]`，`EvidenceRef` 模型层再做一次兜底钳位（反相关的词分布可能算出负值）。
+> 越界的浮点被钳位而非抛错，保证报告始终可产出；非数值类型仍会被拒绝。
 
 **判据（criteria）**
 

@@ -4,8 +4,9 @@
 
 [server]
 headless = true
-# Keep the file-watcher off in the cloud (no source changes at runtime).
-fileWatcherType = "none"
+# NOTE: leave the file watcher at its default. Pinning it to "none" would also
+# apply to local runs (this file is read from the repo root), and a long-running
+# local server would then never pick up edited source files.
 
 [browser]
 # Don't phone home usage stats from a public deployment.

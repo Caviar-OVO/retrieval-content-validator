@@ -104,6 +104,25 @@ class TestCosineClamp(unittest.TestCase):
         self.assertGreater(result.factuality.total_claims, 0)
 
 
+class TestEvidenceRefClampAtModelLevel(unittest.TestCase):
+    """Defense in depth: EvidenceRef clamps [0,1] scores instead of aborting."""
+
+    def test_out_of_range_scores_are_clamped_not_raised(self):
+        from rva.models import EvidenceRef
+        ref = EvidenceRef(source_id="S1", reliability=-0.1, similarity=-0.02, coverage=1.5)
+        self.assertEqual((ref.reliability, ref.similarity, ref.coverage), (0.0, 0.0, 1.0))
+
+    def test_in_range_scores_untouched(self):
+        from rva.models import EvidenceRef
+        ref = EvidenceRef(source_id="S1", reliability=0.9, similarity=0.42, coverage=0.42)
+        self.assertEqual((ref.reliability, ref.similarity, ref.coverage), (0.9, 0.42, 0.42))
+
+    def test_non_numeric_is_still_rejected(self):
+        from rva.models import EvidenceRef
+        with self.assertRaises(Exception):
+            EvidenceRef(source_id="S1", reliability="abc", similarity=0.5, coverage=0.5)
+
+
 class TestVectorRetriever(unittest.TestCase):
     def setUp(self):
         self.sources = [
