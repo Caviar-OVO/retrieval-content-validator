@@ -30,12 +30,30 @@ from rva.config import describe  # noqa: E402
 from rva.models import Source, ValidationResult  # noqa: E402
 from rva.stages.output import RELIABILITY_THRESHOLD  # noqa: E402
 from rva.stages.verify import DEFAULT_REGISTRY  # noqa: E402
+import rva.stages.verify as _verify_module  # noqa: E402
 
-#: Shown in the sidebar so a running server can be told apart from stale code.
-#: If this number does not move after an upgrade, the process is still serving
-#: the copy of `rva` it imported at start-up (Streamlit caches imported modules;
-#: a refresh does not re-import them - restart the server).
-BUILD_STAMP = f"registry={len(DEFAULT_REGISTRY)} · threshold={RELIABILITY_THRESHOLD}"
+#: Bump on every user-visible change; shown in the sidebar.
+APP_VERSION = "1.4"
+
+#: A short content fingerprint of the loaded `rva.stages.verify` file. Compare it
+#: against the value on GitHub (or a fresh local run): if the running server shows
+#: a different fingerprint, it is serving a *stale* copy of the package it
+#: imported at start-up. Streamlit caches imported modules, so a browser refresh
+#: never re-imports them - the server process (or the cloud deployment) must be
+#: restarted/rebuilt for a code change to take effect.
+def _source_fingerprint() -> str:
+    import hashlib
+    try:
+        blob = Path(_verify_module.__file__).read_bytes()
+        return hashlib.sha256(blob).hexdigest()[:8]
+    except Exception:
+        return "unknown"
+
+
+BUILD_STAMP = (
+    f"v{APP_VERSION} · registry={len(DEFAULT_REGISTRY)} · "
+    f"threshold={RELIABILITY_THRESHOLD} · fp={_source_fingerprint()}"
+)
 
 APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
@@ -269,7 +287,7 @@ with st.sidebar:
         st.rerun()
     cfg_info = describe()
     st.caption(f"API key：{cfg_info['openai_api_key']}   模型：{cfg_info['judge_model']}")
-    st.caption(f"🧩 来源分级：{BUILD_STAMP}")
+    st.caption(f"🧩 版本：{BUILD_STAMP}")
 
     st.markdown("**Critic（阶段一）**")
     critic_backend = st.selectbox(

@@ -61,8 +61,10 @@ class TestStreamlitConsole(unittest.TestCase):
         at = AppTest.from_file(str(APP), default_timeout=180)
         at.run()
         captions = " ".join(c.value or "" for c in at.sidebar.caption)
-        self.assertIn("来源分级", captions)
+        self.assertIn("版本：", captions)
+        self.assertIn("registry=64", captions)
         self.assertIn("threshold=0.7", captions)
+        self.assertIn("fp=", captions)
 
     def test_render_load_and_run(self):
         at = AppTest.from_file(str(APP), default_timeout=180)
