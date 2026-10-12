@@ -114,6 +114,11 @@ python run_ui.py             # 等价于：streamlit run app/streamlit_app.py
 接地性与修订/复查六个面板；侧边栏可切换 `critic_backend` / `reviser_backend` / `judge`
 等后端。UI 只是 `rva.validate(...)` 的渲染层，不含任何新校验逻辑。
 
+需要导入自己的来源？展开「📥 导入检索到的来源」，粘贴或上传检索工具的输出即可：
+自动识别 JSON / JSONL / CSV / TSV、每行一个 URL、Markdown 链接，以及「标题 + 链接 +
+摘要」的文本块；`link`/`href`、`snippet`/`content`、`score` 等常见字段别名会归一化，
+缺失的 `id` / `tag` 自动补全，重复来源去重。可选「替换」或「追加」现有表格。
+
 ### 部署成网页（让别人也能打开）
 
 仓库已备好部署产物（`requirements.txt` / `.streamlit/config.toml`），两条路可选，
@@ -469,6 +474,7 @@ examples/
   sources.json         示例检索结果（含高/低可靠性来源）
 app/
   streamlit_app.py     Streamlit 交互式校验台（validate() 的可视化渲染层）
+  import_sources.py    来源导入解析（JSON/JSONL/CSV/URL/文本块 → Source schema）
 run_ui.py              启动校验台（等价于 streamlit run app/streamlit_app.py）
 requirements.txt       Streamlit Cloud 构建依赖（含可选 judge 的注释行）
 .streamlit/config.toml Streamlit 运行/主题配置（headless、关闭 usage stats）

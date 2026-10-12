@@ -29,6 +29,12 @@ from rva import format_factuality, format_grounding, format_honesty, format_repo
 from rva.config import describe  # noqa: E402
 from rva.models import Source, ValidationResult  # noqa: E402
 
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from import_sources import parse_sources  # noqa: E402
+
 EXAMPLES = ROOT / "examples"
 
 VERDICT_ORDER = ["accurate", "inaccurate", "disputed", "unsupported", "not_applicable"]
@@ -89,6 +95,89 @@ def df_to_sources(df: pd.DataFrame) -> list[Source]:
     return out
 
 
+def merge_sources(existing: list[dict], incoming: list[dict], mode: str) -> list[dict]:
+    """Combine imported records with the current table ('replace' or 'append')."""
+    if mode == "替换现有来源":
+        return incoming
+    used = {str(r.get("id", "")).strip() for r in existing}
+    seen: set[str] = set()
+    for r in existing:
+        seen.add(str(r.get("url", "")).strip().lower() or str(r.get("text", ""))[:120])
+    out = list(existing)
+    for rec in incoming:
+        url = str(rec.get("url", "")).strip().lower()
+        dedup = url or str(rec.get("text", ""))[:120]
+        if dedup and dedup in seen:
+            continue
+        base = str(rec.get("id", "")).strip() or f"S{len(out) + 1}"
+        sid, i = base, 1
+        while sid in used:
+            i += 1
+            sid = f"{base}_{i}"
+        used.add(sid)
+        if dedup:
+            seen.add(dedup)
+        item = dict(rec)
+        item["id"] = sid
+        out.append(item)
+    return out
+
+
+def render_source_import() -> None:
+    """Paste or upload retrieved sources and merge them into the table."""
+    with st.expander("📥 导入检索到的来源（粘贴或上传文件）"):
+        st.caption(
+            "把检索工具的输出、或手抄的搜索结果直接贴进来。自动识别 JSON / JSONL / CSV / TSV、"
+            "每行一个 URL、Markdown 链接，以及「标题 + 链接 + 摘要」的文本块；"
+            "字段名 `link`/`href`、`snippet`/`content`、`score` 等常见别名会归一化，"
+            "缺失的 `id` / `tag` 会自动补全。"
+        )
+        mode = st.radio("导入方式", ["粘贴文本", "上传文件"], horizontal=True, key="import_mode")
+        raw, filename = "", ""
+        if mode == "粘贴文本":
+            raw = st.text_area(
+                "粘贴来源", key="import_paste", height=160,
+                placeholder='例：[{"url":"https://www.who.int/...","snippet":"室外空气污染每年约420万人过早死亡。"}]\n'
+                            "或每行一个链接，或「标题 + 链接 + 摘要」的文本块。",
+            )
+        else:
+            uploaded = st.file_uploader(
+                "选择文件", type=["json", "jsonl", "ndjson", "csv", "tsv", "txt", "md"],
+                key="import_file",
+            )
+            if uploaded is not None:
+                filename = uploaded.name
+                raw = uploaded.getvalue().decode("utf-8", errors="replace")
+
+        c1, c2 = st.columns([3, 2])
+        target = c1.radio("写入方式", ["替换现有来源", "追加到现有来源"], key="import_target")
+        submitted = c2.button("解析并导入", type="primary", width="stretch", key="import_submit")
+
+        if submitted:
+            if not raw.strip():
+                st.session_state["import_msg"] = ("error", "没有可导入的内容：请粘贴文本或选择一个文件。")
+            else:
+                parsed = parse_sources(raw, filename)
+                if not parsed.records:
+                    detail = "　".join(parsed.warnings) if parsed.warnings else ""
+                    st.session_state["import_msg"] = ("error", f"未能识别任何来源。{detail}")
+                else:
+                    st.session_state["sources_rows"] = merge_sources(
+                        st.session_state["sources_rows"], parsed.records, target
+                    )
+                    st.session_state.pop("sources_editor", None)
+                    note = f"已导入 {len(parsed.records)} 条（识别格式：{parsed.format}）。"
+                    if parsed.warnings:
+                        note += " " + " ".join(parsed.warnings[:3])
+                    st.session_state["import_msg"] = ("success", note)
+                    st.rerun()
+
+        msg = st.session_state.pop("import_msg", None)
+        if msg:
+            kind, text = msg
+            (st.success if kind == "success" else st.error)(text)
+
+
 def badge(text: str, color: str) -> str:
     return f":{color}-background[{text}]"
 
@@ -96,7 +185,7 @@ def badge(text: str, color: str) -> str:
 ONBOARDING_STEPS = [
     ("① 填入问题", "问题（question）是 claim 锚点：critic 以它为基准拆解并判断相关性。"),
     ("② 填入待审回答", "把 LLM 基于检索结果生成的回答（answer）粘进来。"),
-    ("③ 提供检索来源", "sources 是核验证据。点「载入示例」或直接编辑表格/JSON。"),
+    ("③ 提供检索来源", "sources 是核验证据。可点「载入示例」、用「📥 导入检索到的来源」粘贴/上传，或直接编辑表格。"),
     ("④ 运行校验", "点「▶️ 运行校验」，逐 tab 查看五级判定、报告、诚实性与修订。"),
 ]
 
@@ -107,6 +196,7 @@ def load_example_into_form() -> None:
     if answer_file.exists():
         st.session_state["answer_text"] = answer_file.read_text(encoding="utf-8").strip()
     st.session_state["sources_rows"] = load_example_sources()
+    st.session_state.pop("sources_editor", None)  # force the table to re-render
 
 
 def render_onboarding() -> None:
@@ -251,6 +341,8 @@ st.markdown("**检索到的来源（sources）**")
 st.caption("每行一个来源：`id` 必填且唯一；`text` 为正文；`traffic` 0–1 表示热度。")
 if "sources_rows" not in st.session_state:
     st.session_state["sources_rows"] = load_example_sources()
+
+render_source_import()
 
 df = sources_to_df(st.session_state["sources_rows"])
 edited = st.data_editor(
