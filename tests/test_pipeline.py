@@ -56,6 +56,40 @@ class TestVerify(unittest.TestCase):
         profile = score_source(Source(id="s", url="https://blog.example.com/post", tag="blog"))
         self.assertLessEqual(profile.score, 0.4)
 
+    def test_mainstream_news_clears_the_reliability_bar(self):
+        # A mainstream outlet must be able to substantiate a claim. These used
+        # to fall to `unknown` (0.50 < RELIABILITY_THRESHOLD 0.7), so a claim
+        # confirmed by Xinhua/CCTV was reported `unsupported`.
+        from rva.stages.output import RELIABILITY_THRESHOLD
+        for url in ("http://www.xinhuanet.com/20261009",
+                    "https://news.cctv.com/2026/10/03/AR",
+                    "http://world.people.com.cn/n1/2026/",
+                    "https://www.bbc.com/news/x",
+                    "https://www.nytimes.com/2026/x"):
+            profile = score_source(Source(id="s", url=url))
+            self.assertGreaterEqual(profile.score, RELIABILITY_THRESHOLD, url)
+
+    def test_subdomain_matches_its_registrable_domain(self):
+        # `news.cctv.com` must resolve through the registrable `cctv.com` key.
+        profile = score_source(Source(id="s", url="https://news.cctv.com/x"))
+        self.assertEqual(profile.matched, "cctv.com")
+
+    def test_lookalike_host_is_not_trusted(self):
+        # A hostile host that merely contains a trusted label must not inherit it.
+        profile = score_source(Source(id="s", url="https://gov.cn.evil.com/x"))
+        self.assertEqual(profile.matched, "none")
+        self.assertLess(profile.score, 0.7)
+
+    def test_explicit_tag_still_works_without_a_known_url(self):
+        profile = score_source(Source(id="s", url="https://blog.example.com/x", tag="reuters.com"))
+        self.assertEqual(profile.matched, "reuters.com")
+
+    def test_portal_and_social_stay_below_the_bar(self):
+        for url in ("https://sina.com.cn/x", "https://www.zhihu.com/q",
+                    "https://x.com/p", "https://toutiao.com/a"):
+            profile = score_source(Source(id="s", url=url))
+            self.assertLess(profile.score, 0.7, url)
+
     def test_detects_assertion_level_contradiction(self):
         claims, _ = decompose("空气污染每年导致约420万人过早死亡。")
         sources = [

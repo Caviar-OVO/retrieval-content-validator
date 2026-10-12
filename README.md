@@ -172,6 +172,7 @@ print(result.revision.revised_text)   # 修订文本，未开 revise 时为 None
 score = (n_accurate + n_not_applicable) / n_total_claims      # 来源锚定准确率
 ```
 
+- **来源分级（`DEFAULT_REGISTRY`）**：内置表覆盖 gov/WHO/新华社/央视/BBC 等常见来源；host 逐级去后缀匹配（`news.cctv.com`→`cctv.com`），精确键优先，再退回 `tag`。**未列出的域名落到 `unknown`(0.50) 或 `portal`(0.5–0.55)，低于 0.7 阈值，故无法佐证 claim**——要支持自有来源，请扩展内置表或传入 `registry`。
 - **锚点是外部可靠来源，不是模型自评**：只有可靠性 ≥ 阈值的来源能判 `Accurate` / `Inaccurate`；当支持与反驳双方都达到阈值时才是 `Disputed`。低可信度博客反驳 WHO 事实，只会导致 `Unsupported`，不会把事实判成 `Inaccurate`。
 - **五级中只有 `Not Applicable` 免于外部核验**：主观意见不触发任何 API 调用；事实 / 推论 / 逻辑论证都会被判。
 - **五级判决不外包给 grounding judge**：`evaluate_factuality(claims, verifications)` **没有** judge 参数，默认（deterministic critic）`method` 恒为 `local_source_anchored`。任何 grounding judge 的分数都无法进入五级判决——这是刻意设计（见下）。

@@ -19,20 +19,87 @@ from ..models import (
     Verification,
 )
 
+#: Built-in source-reliability registry, keyed by registrable domain (a host
+#: also matches a key it is a subdomain of, so `news.cctv.com` -> `cctv.com`).
+#: Scores are 0..1 and ONLY sources scoring >= RELIABILITY_THRESHOLD (0.7) can
+#: make a claim `Accurate` / `Inaccurate`. Anything not listed falls to
+#: `unknown` (0.50), i.e. below the bar - which is sharp, not an error: an
+#: unclassified source is "not yet rated", so it cannot substantiate a claim.
+#: The list is deliberately explicit and replaceable via the `registry`
+#: argument (see docs/design.md 3.1); the built-in set covers the domains most
+#: commonly seen in practice.
 DEFAULT_REGISTRY: dict[str, dict] = {
+    # --- primary / official sources ---------------------------------------
     "gov": {"tier": "primary-official", "score": 0.95, "note": "Government / official statistics"},
     "edu": {"tier": "academic", "score": 0.90, "note": "Academic institution"},
     "who.int": {"tier": "primary-official", "score": 0.95, "note": "WHO"},
+    "cdc.gov": {"tier": "primary-official", "score": 0.95, "note": "US CDC"},
+    "un.org": {"tier": "primary-official", "score": 0.95, "note": "United Nations"},
+    "europa.eu": {"tier": "primary-official", "score": 0.94, "note": "EU institutions"},
+    "gov.cn": {"tier": "primary-official", "score": 0.94, "note": "China central government"},
+    "nhs.uk": {"tier": "primary-official", "score": 0.92, "note": "UK National Health Service"},
+    # --- peer-reviewed literature -----------------------------------------
     "nature.com": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
     "science.org": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
+    "thelancet.com": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
+    "nejm.org": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
+    "bmj.com": {"tier": "peer-reviewed", "score": 0.92, "note": "Peer-reviewed journal"},
+    "cell.com": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
+    "pnas.org": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
+    "jamanetwork.com": {"tier": "peer-reviewed", "score": 0.93, "note": "Peer-reviewed journal"},
     "arxiv.org": {"tier": "preprint", "score": 0.70, "note": "Preprint, not yet peer reviewed"},
+    # --- wire services (agency reporting) ---------------------------------
     "reuters.com": {"tier": "wire", "score": 0.85, "note": "Wire service"},
     "apnews.com": {"tier": "wire", "score": 0.85, "note": "Wire service"},
+    "afp.com": {"tier": "wire", "score": 0.85, "note": "Wire service"},
+    "xinhuanet.com": {"tier": "wire", "score": 0.85, "note": "Xinhua state news agency"},
+    "news.cn": {"tier": "wire", "score": 0.85, "note": "Xinhua state news agency"},
+    # --- established major news organizations -----------------------------
+    "bbc.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "bbc.co.uk": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "nytimes.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "washingtonpost.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "theguardian.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "cnn.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "aljazeera.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "bloomberg.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "ft.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "economist.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "npr.org": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "dw.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "people.com.cn": {"tier": "major-news", "score": 0.80, "note": "People's Daily"},
+    "cctv.com": {"tier": "major-news", "score": 0.80, "note": "China Central Television"},
+    "chinadaily.com.cn": {"tier": "major-news", "score": 0.80, "note": "China Daily"},
+    "china.org.cn": {"tier": "major-news", "score": 0.78, "note": "State news portal"},
+    "cgtn.com": {"tier": "major-news", "score": 0.78, "note": "State broadcaster"},
+    "globaltimes.cn": {"tier": "major-news", "score": 0.75, "note": "State-affiliated newspaper"},
+    "scmp.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "thepaper.cn": {"tier": "major-news", "score": 0.80, "note": "Established news outlet"},
+    "caixin.com": {"tier": "major-news", "score": 0.82, "note": "Established financial news outlet"},
+    "yicai.com": {"tier": "major-news", "score": 0.80, "note": "Established financial news outlet"},
+    "jpost.com": {"tier": "major-news", "score": 0.78, "note": "Major news organization"},
+    "timesofisrael.com": {"tier": "major-news", "score": 0.78, "note": "Major news organization"},
+    "haaretz.com": {"tier": "major-news", "score": 0.80, "note": "Major news organization"},
+    "china.com.cn": {"tier": "major-news", "score": 0.75, "note": "State-run news portal"},
+    # --- encyclopedic / reference -----------------------------------------
     "wikipedia.org": {"tier": "encyclopedic", "score": 0.65, "note": "Crowd-edited encyclopedia"},
+    # --- portals / aggregators (below the bar, not primary reporting) ------
+    "sina.com.cn": {"tier": "portal", "score": 0.55, "note": "Aggregator portal"},
+    "sohu.com": {"tier": "portal", "score": 0.55, "note": "Aggregator portal"},
+    "163.com": {"tier": "portal", "score": 0.55, "note": "Aggregator portal"},
+    "qq.com": {"tier": "portal", "score": 0.55, "note": "Aggregator portal"},
+    "ifeng.com": {"tier": "portal", "score": 0.55, "note": "Aggregator portal"},
+    "baidu.com": {"tier": "portal", "score": 0.50, "note": "Search / aggregator"},
+    "toutiao.com": {"tier": "portal", "score": 0.50, "note": "Aggregator feed"},
+    # --- self-media / low-credibility -------------------------------------
     "medium.com": {"tier": "blog", "score": 0.40, "note": "Self-published blog"},
+    "zhihu.com": {"tier": "ugc", "score": 0.45, "note": "Q&A user-generated content"},
+    "weibo.com": {"tier": "social", "score": 0.35, "note": "Social media"},
+    "x.com": {"tier": "social", "score": 0.35, "note": "Social media"},
     "blog": {"tier": "blog", "score": 0.35, "note": "Generic blog"},
     "social": {"tier": "ugc", "score": 0.30, "note": "User-generated content"},
     "forum": {"tier": "ugc", "score": 0.30, "note": "Forum / UGC"},
+    # --- fallback ---------------------------------------------------------
     "unknown": {"tier": "unknown", "score": 0.50, "note": "Unclassified source"},
 }
 
@@ -104,28 +171,40 @@ def relevant_negation(claim_tokens: list[str], source_text: str) -> dict | None:
     return None
 
 
+def _registry_candidates(domain: str) -> list[str]:
+    """Suffixes of `domain` a registry key may match, longest (most specific) first.
+
+    ``news.cctv.com`` -> ``["news.cctv.com", "cctv.com", "com"]`` so an exact
+    key beats its registrable parent, and ``www.gov.cn`` still finds ``gov.cn``.
+    """
+    if not domain:
+        return []
+    parts = domain.split(".")
+    return [".".join(parts[i:]) for i in range(len(parts))]
+
+
 def score_source(source: Source, registry: dict[str, dict] | None = None) -> ReliabilityProfile:
     registry = registry or DEFAULT_REGISTRY
     domain = _domain_of(source.url) or (source.domain or "")
-    signals = [domain]
-    if domain:
-        signals.append(domain.split(".")[-1])
-    if source.tag:
-        signals.append(source.tag.lower())
 
-    for sig in signals:
-        if sig in registry:
-            profile = registry[sig]
-            return ReliabilityProfile(
-                tier=profile["tier"], score=profile["score"], note=profile["note"],
-                matched=sig, domain=domain,
-            )
-    if domain.endswith(".gov"):
-        profile = registry["gov"]
-        return ReliabilityProfile(tier=profile["tier"], score=profile["score"], note=profile["note"], matched=".gov", domain=domain)
-    if domain.endswith(".edu"):
-        profile = registry["edu"]
-        return ReliabilityProfile(tier=profile["tier"], score=profile["score"], note=profile["note"], matched=".edu", domain=domain)
+    # Match the URL host (and its suffixes) first, then the caller-supplied
+    # `tag`, so an explicit tag acts as an extra signal, not an override.
+    signal_groups: list[list[str]] = [_registry_candidates(domain)]
+    if source.tag:
+        signal_groups.append([source.tag.lower()])
+
+    for signals in signal_groups:
+        for sig in signals:
+            if sig in registry:
+                profile = registry[sig]
+                return ReliabilityProfile(
+                    tier=profile["tier"], score=profile["score"], note=profile["note"],
+                    matched=sig, domain=domain,
+                )
+
+    # `gov` / `edu` are registry keys themselves, so the suffix walk above
+    # already resolves e.g. `mit.edu` -> `edu` and `x.gov` -> `gov`; a host that
+    # merely *contains* those labels (e.g. `gov.cn.evil.com`) matches nothing.
 
     profile = registry["unknown"]
     return ReliabilityProfile(tier=profile["tier"], score=profile["score"], note=profile["note"], matched="none", domain=domain)

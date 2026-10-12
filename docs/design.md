@@ -42,16 +42,25 @@ validate(question, answer, sources, ...)   # (question, answer) 成对进入
 
 | 层级 | 示例 | 分数 |
 |------|------|------|
-| primary-official | .gov / WHO | 0.95 |
-| peer-reviewed | nature / science | 0.93 |
+| primary-official | .gov / WHO / gov.cn | 0.94–0.95 |
+| peer-reviewed | nature / science / NEJM | 0.92–0.93 |
 | academic | .edu | 0.90 |
-| wire | Reuters / AP | 0.85 |
+| wire | Reuters / AP / 新华社 | 0.85 |
+| major-news | BBC / NYT / 人民网 / 央视 | 0.75–0.82 |
 | preprint | arXiv | 0.70 |
 | encyclopedic | Wikipedia | 0.65 |
-| blog / ugc | Medium / 论坛 | 0.30–0.40 |
+| portal | 新浪 / 搜狐 / 头条 | 0.50–0.55 |
+| blog / ugc / social | Medium / 知乎 / 微博 | 0.30–0.45 |
 | unknown | 未分类 | 0.50 |
 
-可通过 `registry` 参数整体替换为真实评级服务。
+**匹配规则**：按 host 逐级去后缀匹配（`news.cctv.com` → `cctv.com` → `com`），
+精确键优先；再退回调用方的 `tag`。因此**伪装域名**（如 `gov.cn.evil.com`）不会继承
+可信标签，只会落到 `unknown`。
+
+**关键阈值**：只有可靠性 ≥ `RELIABILITY_THRESHOLD`(0.7) 的来源能判 `Accurate` /
+`Inaccurate`。`unknown`(0.50) 与 `portal`(0.50–0.55) **低于**该阈值——这不是判定
+失败，而是"该来源尚未被评级，故不足以佐证claim"。需要引入新域名时，可扩展内置表，
+或用 `registry` 参数整体替换为真实评级服务。
 
 ### 3.2 证据匹配：向量检索 + NLI 蕴含判定
 
