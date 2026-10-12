@@ -1,0 +1,57 @@
+# Recipe manifest (ADK adk-recipes schema, with an explicit `name`).
+# Primary name: 检索内容校验 skill (retrieval-content-validator).
+# In-code name: RVA (Response Validation Agent) - a local alias, not the product name.
+name: "retrieval-content-validator"
+display_name: "检索内容校验 skill"
+type: "standalone"        # Options: [standalone | module]
+status: "active"          # Options: [active | inactive]
+language: "python"        # Options: [python | java | go | kotlin | typescript]
+description: "对模型基于网络检索生成的回答执行证据效力、可审计性、诚实性三重校验，输出 claim 级核查报告、总体置信分与修订建议。适用于事实性问答、检索增强生成（RAG）输出的核查场景。"
+
+deployable: false         # offline library + CLI; no one-command cloud deploy
+
+architecture:
+  agent: "multi"          # critic (decompose) / verifier (evidence) / auditor (honesty) / reviser
+                          # Critic has two tracks: deterministic (default, offline rules) and
+                          #   llm (CRITIC.prompt: extraction + five-level verdict in one pass).
+                          # two relayed roles, one shared ethical standard (see rva/roles.py):
+                          #   Critic  (investigative journalist) = decompose / verify / judge
+                          #   Reviser (editor)                  = minimal, additive rewrite
+  stateful: false
+  datasources:
+  - "external"            # retrieval candidates are supplied by the caller
+
+dependencies:
+  libraries:
+    - "pydantic"
+    - "ragas"             # optional, grounding-only judge
+    - "trulens"           # optional, grounding-only judge
+  services:
+    - "OpenAI-compatible LLM API"   # optional; only for grounding judge / LLM reviser
+
+interface:
+  input:
+    question: "user question (required for claim anchoring)"
+    answer: "LLM answer text over web-search results"
+    sources: "retrieved candidate documents (id + text + url + traffic)"
+  output:
+    claim_report: "per-claim verdict + justification + source mapping"
+    efficacy: "per-claim source_quality (authority) + freshness + support_score (+ consistency)"
+    overall: "report-level aggregate only (optional): five-level factuality distribution + pass rate, grounding 0-100 score, honesty ratio; NOT a single fused score"
+    audit_log: "criteria, layers, cues, revision log"
+    verdicts: "five-level verdicts; method=local_source_anchored (deterministic) | llm_critic (LLM critic)"
+    revised_text: "optional Reviser rewrite (original never mutated)"
+    revision_audit: "before/after diff + input verdicts + ---END-OF-EDIT--- marker (both reviser tracks)"
+    recheck: "revision->recheck gate: second-pass factuality on the revised text (max 2 rounds)"
+
+ownership:
+  team: "retrieval-content-validator maintainers"
+  poc: "see repository owner"
+
+tags:
+  - "rag"
+  - "fact-checking"
+  - "hallucination"
+  - "auditability"
+
+license: "MIT"

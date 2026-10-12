@@ -1,0 +1,47 @@
+{
+  "backend": "trulens",
+  "method": "external_judge",
+  "score": 0.0,
+  "supported": 0,
+  "partially_supported": 0,
+  "unsupported": 3,
+  "contradicted": 0,
+  "verifiable_claims": 3,
+  "verdicts": [
+    {
+      "claim_id": "C1",
+      "type": "fact",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    },
+    {
+      "claim_id": "C2",
+      "type": "reasoning",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    },
+    {
+      "claim_id": "C3",
+      "type": "opinion",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    },
+    {
+      "claim_id": "C4",
+      "type": "inference",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    },
+    {
+      "claim_id": "C5",
+      "type": "inference",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    }
+  ]
+}

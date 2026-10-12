@@ -1,0 +1,42 @@
+[
+  {
+    "id": "S1",
+    "title": "WHO: air quality and health",
+    "url": "https://www.who.int/news-room/fact-sheets/detail/ambient-(outdoor)-air-quality-and-health",
+    "tag": "who.int",
+    "traffic": 0.9,
+    "text": "室外空气污染导致全球每年约420万人过早死亡。世界卫生组织将空气污染列为重大公共卫生风险，主要来源包括交通、工业和燃烧燃料。"
+  },
+  {
+    "id": "S2",
+    "title": "某自媒体：空气污染其实没那么严重",
+    "url": "https://blog.example.com/air-quality-myth",
+    "tag": "blog",
+    "traffic": 0.85,
+    "text": "很多人认为空气污染导致数百万死亡，但这被夸大了。真实数字其实没有那么多，相关研究并不支持每年数百万人死于空气污染的结论。"
+  },
+  {
+    "id": "S3",
+    "title": "Reuters: study on PM2.5 mortality",
+    "url": "https://www.reuters.com/business/environment/pm25-study",
+    "tag": "reuters.com",
+    "traffic": 0.7,
+    "text": "一项研究显示，细颗粒物PM2.5与心血管和呼吸系统疾病死亡风险上升相关，长期暴露会显著增加过早死亡。"
+  },
+  {
+    "id": "S4",
+    "title": "论坛讨论：我所在城市空气不错",
+    "url": "https://forum.example.org/thread/air",
+    "tag": "forum",
+    "traffic": 0.6,
+    "text": "我觉得我们城市空气挺好的，早上跑步完全没问题，大家不用太担心污染。"
+  },
+  {
+    "id": "S5",
+    "title": "arXiv preprint: novel PM2.5 model",
+    "url": "https://arxiv.org/abs/2024.xxxxx",
+    "tag": "arxiv.org",
+    "traffic": 0.3,
+    "text": "我们提出一个新的PM2.5暴露估计模型，初步结果表明污染暴露与死亡率之间存在关联，但尚未经过同行评审。"
+  }
+]

@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# local secrets / config
+.env
+.streamlit/secrets.toml
+*.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

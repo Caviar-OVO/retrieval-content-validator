@@ -1,0 +1,7 @@
+interface:
+  display_name: "检索内容校验 skill"
+  short_description: "校验 RAG 回答的证据效力、可审计性与诚实性"
+  default_prompt: "Use $retrieval-content-validator to audit this RAG answer and revise it."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,21 @@
+# Streamlit Community Cloud - build/run dependencies.
+# The repo itself is imported in-place (no `pip install -e .` needed):
+# `app/streamlit_app.py` puts the repo root on sys.path and imports `rva`.
+pydantic>=2.0
+streamlit>=1.30
+pandas>=2.0
+
+# --- Optional: LLM / grounding-judge backends -----------------------------
+# The console runs fully offline without these (deterministic critic, hash
+# retrieval, heuristic NLI, judge=local). Uncomment only if you want the
+# LLM tracks or the ragas/trulens grounding judge in the cloud - they are heavy
+# and pin-sensitive; see pyproject `[project.optional-dependencies].judges`.
+# openai>=1.0
+# python-dotenv>=1.0
+# ragas==0.2.15
+# langchain==0.3.27
+# langchain-core==0.3.79
+# langchain-community==0.3.31
+# langchain-openai==0.3.35
+# trulens==2.14.0
+# trulens-providers-openai==2.14.0

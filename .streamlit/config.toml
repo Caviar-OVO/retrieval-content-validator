@@ -1,0 +1,16 @@
+# Streamlit console configuration.
+# Loaded automatically when Streamlit runs from the repo root (locally and on
+# Streamlit Community Cloud).
+
+[server]
+headless = true
+# Keep the file-watcher off in the cloud (no source changes at runtime).
+fileWatcherType = "none"
+
+[browser]
+# Don't phone home usage stats from a public deployment.
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#4C78A8"
+base = "light"

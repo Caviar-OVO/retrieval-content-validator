@@ -1,0 +1,206 @@
+{
+  "backend": "ragas",
+  "retriever": "openai",
+  "nli": "llm",
+  "stage2": {
+    "retrieval_backend": "openai-embeddings:text-embedding-3-small",
+    "nli_backend": "llm-nli",
+    "screened_total": 20
+  },
+  "method": "external_judge",
+  "score": 0.4,
+  "accurate": 1,
+  "inaccurate": 0,
+  "disputed": 0,
+  "unsupported": 3,
+  "not_applicable": 1,
+  "verifiable_claims": 4,
+  "verdicts": [
+    {
+      "claim_id": "C1",
+      "type": "fact",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "ragas faithfulness=0.50"
+    },
+    {
+      "claim_id": "C2",
+      "type": "reasoning",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    },
+    {
+      "claim_id": "C3",
+      "type": "opinion",
+      "verdict": "not_applicable",
+      "score": 1.0,
+      "rationale": "subjective opinion / personal belief: needs no external verification, so the external judge is not invoked"
+    },
+    {
+      "claim_id": "C4",
+      "type": "inference",
+      "verdict": "accurate",
+      "score": 1.0,
+      "rationale": "ragas faithfulness=1.00"
+    },
+    {
+      "claim_id": "C5",
+      "type": "inference",
+      "verdict": "unsupported",
+      "score": 0.0,
+      "rationale": "no retrieved context to ground the claim"
+    }
+  ],
+  "evidence": [
+    {
+      "claim_id": "C1",
+      "supports": [
+        [
+          "S1",
+          "support",
+          0.7
+        ]
+      ],
+      "neutral": [],
+      "refutes": [
+        [
+          "S2",
+          "refute",
+          0.7
+        ]
+      ],
+      "screened": [
+        [
+          "S3",
+          0.54
+        ],
+        [
+          "S4",
+          0.41
+        ],
+        [
+          "S5",
+          0.49
+        ]
+      ]
+    },
+    {
+      "claim_id": "C2",
+      "supports": [],
+      "neutral": [],
+      "refutes": [],
+      "screened": [
+        [
+          "S1",
+          0.52
+        ],
+        [
+          "S2",
+          0.4
+        ],
+        [
+          "S3",
+          0.49
+        ],
+        [
+          "S4",
+          0.5
+        ],
+        [
+          "S5",
+          0.42
+        ]
+      ]
+    },
+    {
+      "claim_id": "C3",
+      "supports": [
+        [
+          "S2",
+          "support",
+          0.56
+        ]
+      ],
+      "neutral": [],
+      "refutes": [],
+      "screened": [
+        [
+          "S1",
+          0.46
+        ],
+        [
+          "S3",
+          0.39
+        ],
+        [
+          "S4",
+          0.5
+        ],
+        [
+          "S5",
+          0.45
+        ]
+      ]
+    },
+    {
+      "claim_id": "C4",
+      "supports": [
+        [
+          "S5",
+          "support",
+          0.76
+        ],
+        [
+          "S3",
+          "support",
+          0.68
+        ]
+      ],
+      "neutral": [],
+      "refutes": [],
+      "screened": [
+        [
+          "S1",
+          0.39
+        ],
+        [
+          "S2",
+          0.53
+        ],
+        [
+          "S4",
+          0.32
+        ]
+      ]
+    },
+    {
+      "claim_id": "C5",
+      "supports": [],
+      "neutral": [],
+      "refutes": [],
+      "screened": [
+        [
+          "S1",
+          0.48
+        ],
+        [
+          "S2",
+          0.52
+        ],
+        [
+          "S3",
+          0.36
+        ],
+        [
+          "S4",
+          0.51
+        ],
+        [
+          "S5",
+          0.45
+        ]
+      ]
+    }
+  ]
+}
