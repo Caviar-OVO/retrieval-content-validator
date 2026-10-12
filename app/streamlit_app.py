@@ -28,6 +28,14 @@ if str(ROOT) not in sys.path:
 from rva import format_factuality, format_grounding, format_honesty, format_report, validate  # noqa: E402
 from rva.config import describe  # noqa: E402
 from rva.models import Source, ValidationResult  # noqa: E402
+from rva.stages.output import RELIABILITY_THRESHOLD  # noqa: E402
+from rva.stages.verify import DEFAULT_REGISTRY  # noqa: E402
+
+#: Shown in the sidebar so a running server can be told apart from stale code.
+#: If this number does not move after an upgrade, the process is still serving
+#: the copy of `rva` it imported at start-up (Streamlit caches imported modules;
+#: a refresh does not re-import them - restart the server).
+BUILD_STAMP = f"registry={len(DEFAULT_REGISTRY)} · threshold={RELIABILITY_THRESHOLD}"
 
 APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
@@ -261,6 +269,7 @@ with st.sidebar:
         st.rerun()
     cfg_info = describe()
     st.caption(f"API key：{cfg_info['openai_api_key']}   模型：{cfg_info['judge_model']}")
+    st.caption(f"🧩 来源分级：{BUILD_STAMP}")
 
     st.markdown("**Critic（阶段一）**")
     critic_backend = st.selectbox(

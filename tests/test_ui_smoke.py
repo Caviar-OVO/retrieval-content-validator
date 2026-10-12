@@ -55,6 +55,15 @@ class TestStreamlitConsole(unittest.TestCase):
         reopen.click().run()
         self.assertIn("新手引导", self._markdown(at), "guide did not reopen")
 
+    def test_build_stamp_is_visible(self):
+        # A stale server serves the old `rva` it imported at start-up. The stamp
+        # makes that detectable in the UI instead of showing fixed-looking output.
+        at = AppTest.from_file(str(APP), default_timeout=180)
+        at.run()
+        captions = " ".join(c.value or "" for c in at.sidebar.caption)
+        self.assertIn("来源分级", captions)
+        self.assertIn("threshold=0.7", captions)
+
     def test_render_load_and_run(self):
         at = AppTest.from_file(str(APP), default_timeout=180)
         at.run()
