@@ -125,10 +125,17 @@ def build_embedder(backend: str = "hash", *, llm_ok: bool = False):
 
 
 def cosine(a: list[float], b: list[float]) -> float:
-    """Cosine similarity. Inputs from the embedders above are already normalised."""
+    """Cosine similarity, clamped to [0.0, 1.0].
+
+    The raw cosine of two L2-normalised vectors can be negative (anti-correlated
+    token distributions). Downstream this value is a *similarity*: it becomes
+    `EvidenceRef.similarity` / `coverage` (both `ge=0`) and drives the distance
+    threshold. A negative score therefore means "less related than unrelated"
+    and floors at 0 instead of leaking a negative into the report models.
+    """
     if not a or not b or len(a) != len(b):
         return 0.0
-    return sum(x * y for x, y in zip(a, b))
+    return max(0.0, sum(x * y for x, y in zip(a, b)))
 
 
 # --- chunking --------------------------------------------------------------

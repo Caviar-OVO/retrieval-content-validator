@@ -63,6 +63,47 @@ class TestHashingEmbedder(unittest.TestCase):
         self.assertEqual(one, two)
 
 
+class TestCosineClamp(unittest.TestCase):
+    """A negative raw cosine must never leak into `EvidenceRef` (ge=0)."""
+
+    def test_cosine_never_negative(self):
+        a = [1.0, 0.0, 0.0]
+        b = [-1.0, 0.0, 0.0]
+        self.assertEqual(cosine(a, b), 0.0)
+
+    def test_anti_correlated_tokens_do_not_crash_retrieval(self):
+        # Anti-correlated token distributions: the pre-clamp cosine for pairs
+        # like this goes negative and used to fail ValidationError on
+        # EvidenceRef(similarity=-0.02). Pin the whole path end to end.
+        sources = [
+            Source(id="S1", url="https://news.example.com/a",
+                   text="uspm2.5研究磋商us"),
+            Source(id="S2", url="https://news.example.com/b",
+                   text="研究研究攻击trumpoilmidtermus中期选举军事空气who"),
+        ]
+        retriever = VectorRetriever(sources, vector_distance_threshold=0.99)
+        for chunk in retriever.retrieve("污染数据伊朗pm2.5"):
+            self.assertGreaterEqual(chunk.similarity, 0.0)
+            self.assertLessEqual(chunk.similarity, 1.0)
+        for sim in retriever.similarity_map("污染数据伊朗pm2.5").values():
+            self.assertGreaterEqual(sim, 0.0)
+
+    def test_validate_survives_anti_correlated_sources(self):
+        # The user-visible symptom: "运行校验" raised ValidationError. It must
+        # now complete and produce a result.
+        sources = [
+            Source(id="S1", url="https://news.example.com/a", text="uspm2.5研究磋商us"),
+            Source(id="S2", url="https://news.example.com/b",
+                   text="研究研究攻击trumpoilmidtermus中期选举军事空气who"),
+        ]
+        result = validate(
+            answer="伊朗与美国仍在通过调解方进行间接磋商。",
+            question="美国与伊朗的谈判进展如何？",
+            sources=sources,
+        )
+        self.assertGreater(result.factuality.total_claims, 0)
+
+
 class TestVectorRetriever(unittest.TestCase):
     def setUp(self):
         self.sources = [
