@@ -27,7 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from rva import format_factuality, format_grounding, format_honesty, format_report, validate  # noqa: E402
-from rva.config import describe, get_base_url, get_embed_model, get_judge_model  # noqa: E402
+from rva.config import describe, get_api_key, get_base_url, get_embed_model, get_judge_model  # noqa: E402
 from rva.models import Source, ValidationResult  # noqa: E402
 from rva.stages.output import RELIABILITY_THRESHOLD  # noqa: E402
 from rva.stages.verify import DEFAULT_REGISTRY  # noqa: E402
@@ -45,7 +45,9 @@ APP_VERSION = "1.4"
 def _source_fingerprint() -> str:
     import hashlib
     try:
-        blob = Path(_verify_module.__file__).read_bytes()
+        # Normalise line endings first: a Windows checkout (CRLF) and a Linux
+        # one (LF) hold identical code, and the stamp must agree across them.
+        blob = Path(_verify_module.__file__).read_bytes().replace(b"\r\n", b"\n")
         return hashlib.sha256(blob).hexdigest()[:8]
     except Exception:
         return "unknown"
@@ -282,12 +284,40 @@ _LLM_FIELDS = (
     ("cfg_embed_model", "RVA_EMBED_MODEL", "embed_model"),
 )
 
+#: The API key is handled separately: it is a secret, so it gets a masked input,
+#: is never echoed back in a caption, and a blank box keeps the .env value.
+_API_KEY_SESSION = "cfg_api_key"
+_API_KEY_ENV = "OPENAI_API_KEY"
+
+
+def _effective_api_key() -> str:
+    """The key actually used: the sidebar override, else the .env / Secrets one."""
+    value = str(st.session_state.get(_API_KEY_SESSION, "") or "").strip()
+    if value:
+        return value
+    return str(st.session_state.get("cfg_pristine", {}).get("api_key", "") or "").strip()
+
+
+def _apply_api_key() -> None:
+    """Push the sidebar key (or the .env fallback) into the environment."""
+    key = _effective_api_key()
+    if key:
+        os.environ[_API_KEY_ENV] = key
+    else:
+        os.environ.pop(_API_KEY_ENV, None)
+
+
+def _reset_api_key() -> None:
+    """Drop the session override so the .env / Secrets key is used again."""
+    st.session_state[_API_KEY_SESSION] = ""
+
 
 def _reset_llm_config() -> None:
-    """Restore the endpoint/model inputs to the .env / Secrets values."""
+    """Restore the endpoint/model/API-key inputs to the .env / Secrets values."""
     pristine = st.session_state.get("cfg_pristine", {})
     for session_key, _env, field in _LLM_FIELDS:
         st.session_state[session_key] = pristine.get(field, "")
+    st.session_state[_API_KEY_SESSION] = ""
 
 
 def _apply_llm_config(pristine: dict) -> None:
@@ -328,15 +358,22 @@ with st.sidebar:
             "base_url": get_base_url() or "",
             "model": get_judge_model(),
             "embed_model": get_embed_model(),
+            "api_key": get_api_key() or "",
         }
     pristine = st.session_state["cfg_pristine"]
     for session_key, _env, field in _LLM_FIELDS:
         st.session_state.setdefault(session_key, pristine.get(field, ""))
+    st.session_state.setdefault(_API_KEY_SESSION, "")
 
     with st.expander("🔌 模型 / 端点（OpenAI 兼容）", expanded=False):
         st.caption(
             "留空＝用 `.env` / Secrets 的值；改完按回车即生效，无需重启。端点会作用于 "
             "critic / NLI / reviser / embedding 全部 LLM 轨。"
+        )
+        st.text_input(
+            "API Key（临时）", key=_API_KEY_SESSION, type="password",
+            placeholder="sk-...（留空＝用 .env / Secrets 的 key）",
+            help="只作用于当前会话，不写回 Secrets、不显示在页面上；换别的端点试用时很方便。",
         )
         st.text_input(
             "Base URL", key="cfg_base_url", placeholder="https://openrouter.ai/api/v1",
@@ -356,12 +393,16 @@ with st.sidebar:
         st.button("恢复默认（.env / Secrets）", width="stretch", key="cfg_reset",
                   on_click=_reset_llm_config)
 
-    # Re-apply on every run: text inputs commit on Enter/blur, so the endpoint in
-    # effect always matches what the boxes show.
+    # Re-apply on every run: text inputs commit on Enter/blur, so the endpoint and
+    # key in effect always match what the boxes show.
     _apply_llm_config(pristine)
+    _apply_api_key()
 
     cfg_info = describe()
-    st.caption(f"API key：{cfg_info['openai_api_key']}")
+    key_now = _effective_api_key()
+    key_src = "会话临时" if str(st.session_state.get(_API_KEY_SESSION, "") or "").strip() else ".env / Secrets"
+    key_label = f"已设置（{key_src}）" if key_now else "未设置"
+    st.caption(f"API key：{key_label}")
     st.caption(f"🔌 端点：{cfg_info['openai_base_url']}　模型：{cfg_info['judge_model']}")
     st.caption(f"🧩 版本：{BUILD_STAMP}")
 

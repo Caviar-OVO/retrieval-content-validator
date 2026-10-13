@@ -71,7 +71,7 @@ OPENAI_API_KEY = "sk-..."
 # RVA_CRITIC = "auto"               # 有 key 且有 sources 才走 LLM critic
 ```
 
-保存后应用会自动重启，也可以随时在页面侧边栏「🔌 模型 / 端点」临时切换端点与模型（仅影响当前会话，不写回 Secrets）。云端没有 `.env` 文件，配置会从 Secrets 读取
+保存后应用会自动重启，也可以随时在页面侧边栏「🔌 模型 / 端点」临时切换 **API Key / 端点 / 模型**（仅影响当前会话，不写回 Secrets；Key 框为密码输入，页面上不显示）。云端没有 `.env` 文件，配置会从 Secrets 读取
 （`rva/config.py` 会把 `st.secrets` 自动桥接进环境变量；真实环境变量与本地
 `.env` 优先级更高，本地行为不变）。
 

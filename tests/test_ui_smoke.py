@@ -93,6 +93,48 @@ class TestStreamlitConsole(unittest.TestCase):
         self.assertEqual(os.environ.get("RVA_JUDGE_MODEL"),
                          at.session_state["cfg_pristine"]["model"])
 
+    def test_api_key_input_overrides_and_falls_back(self):
+        # A visitor must be able to try their own key; a blank box keeps .env.
+        import os
+        import rva.config as config
+        saved = os.environ.get("OPENAI_API_KEY")
+        os.environ.pop("OPENAI_API_KEY", None)
+        config._loaded = False
+        try:
+            at = AppTest.from_file(str(APP), default_timeout=180)
+            at.run()
+            self.assertEqual([str(e) for e in at.exception], [])
+
+            key_input = _find(at.sidebar.text_input, "API Key（临时）")
+            self.assertIsNotNone(key_input, "API key input missing from the sidebar")
+            # The widget is declared type="password" (AppTest does not surface
+            # the proto type, so pin the source instead).
+            src = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+            self.assertIn('key=_API_KEY_SESSION, type="password"', src,
+                          "the API key box must be a masked input")
+
+            key_input.set_value("sk-session-temp-key")
+            at.run()
+            self.assertEqual([str(e) for e in at.exception], [])
+            self.assertEqual(os.environ.get("OPENAI_API_KEY"), "sk-session-temp-key")
+            captions = " ".join(c.value or "" for c in at.sidebar.caption)
+            self.assertIn("会话临时", captions)
+            # the secret itself must never be rendered anywhere in the UI
+            page = " ".join(m.value or "" for m in at.markdown) + captions
+            self.assertNotIn("sk-session-temp-key", page)
+
+            _find(at.sidebar.text_input, "API Key（临时）").set_value("")
+            at.run()
+            self.assertEqual([str(e) for e in at.exception], [])
+            self.assertEqual(os.environ.get("OPENAI_API_KEY"),
+                             at.session_state["cfg_pristine"]["api_key"] or None)
+        finally:
+            if saved is None:
+                os.environ.pop("OPENAI_API_KEY", None)
+            else:
+                os.environ["OPENAI_API_KEY"] = saved
+            config._loaded = False
+
     def test_render_load_and_run(self):
         at = AppTest.from_file(str(APP), default_timeout=180)
         at.run()
