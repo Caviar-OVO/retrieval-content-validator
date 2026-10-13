@@ -14,6 +14,7 @@ optional revision), keeping every field traceable back to the models in
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -26,7 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from rva import format_factuality, format_grounding, format_honesty, format_report, validate  # noqa: E402
-from rva.config import describe  # noqa: E402
+from rva.config import describe, get_base_url, get_embed_model, get_judge_model  # noqa: E402
 from rva.models import Source, ValidationResult  # noqa: E402
 from rva.stages.output import RELIABILITY_THRESHOLD  # noqa: E402
 from rva.stages.verify import DEFAULT_REGISTRY  # noqa: E402
@@ -272,6 +273,42 @@ def decision_badge(d: str) -> str:
 
 
 # --------------------------------------------------------------------------
+# sidebar: LLM endpoint / model overrides
+# --------------------------------------------------------------------------
+#: env var -> session key holding the sidebar input for it.
+_LLM_FIELDS = (
+    ("cfg_base_url", "OPENAI_BASE_URL", "base_url"),
+    ("cfg_model", "RVA_JUDGE_MODEL", "model"),
+    ("cfg_embed_model", "RVA_EMBED_MODEL", "embed_model"),
+)
+
+
+def _reset_llm_config() -> None:
+    """Restore the endpoint/model inputs to the .env / Secrets values."""
+    pristine = st.session_state.get("cfg_pristine", {})
+    for session_key, _env, field in _LLM_FIELDS:
+        st.session_state[session_key] = pristine.get(field, "")
+
+
+def _apply_llm_config(pristine: dict) -> None:
+    """Write the sidebar inputs into the environment for this session.
+
+    The pipeline reads `OPENAI_BASE_URL` / `RVA_JUDGE_MODEL` / `RVA_EMBED_MODEL`
+    through `rva.config` at call time, so setting them here redirects every LLM
+    track (critic / NLI / reviser / embeddings) at the chosen endpoint. A blank
+    box falls back to the `.env` / Secrets value rather than clearing it.
+    """
+    for session_key, env_key, field in _LLM_FIELDS:
+        value = str(st.session_state.get(session_key, "") or "").strip()
+        if not value:
+            value = str(pristine.get(field, "") or "").strip()
+        if value:
+            os.environ[env_key] = value
+        else:
+            os.environ.pop(env_key, None)
+
+
+# --------------------------------------------------------------------------
 # sidebar: configuration
 # --------------------------------------------------------------------------
 st.sidebar.title("⚙️ 配置")
@@ -285,8 +322,47 @@ with st.sidebar:
     if st.button("❓ 新手引导", width="stretch"):
         st.session_state["show_onboarding"] = True
         st.rerun()
+    # Snapshot the .env / Secrets values once so the inputs can be reset to them.
+    if "cfg_pristine" not in st.session_state:
+        st.session_state["cfg_pristine"] = {
+            "base_url": get_base_url() or "",
+            "model": get_judge_model(),
+            "embed_model": get_embed_model(),
+        }
+    pristine = st.session_state["cfg_pristine"]
+    for session_key, _env, field in _LLM_FIELDS:
+        st.session_state.setdefault(session_key, pristine.get(field, ""))
+
+    with st.expander("🔌 模型 / 端点（OpenAI 兼容）", expanded=False):
+        st.caption(
+            "留空＝用 `.env` / Secrets 的值；改完按回车即生效，无需重启。端点会作用于 "
+            "critic / NLI / reviser / embedding 全部 LLM 轨。"
+        )
+        st.text_input(
+            "Base URL", key="cfg_base_url", placeholder="https://openrouter.ai/api/v1",
+            help="OpenAI 兼容端点；留空用默认 OpenAI 官方端点。",
+        )
+        st.text_input(
+            "模型（RVA_JUDGE_MODEL）", key="cfg_model", placeholder="deepseek/deepseek-chat",
+            help="必须是该端点认识的模型名（OpenRouter 等需带前缀全名）。",
+        )
+        st.text_input(
+            "Embedding 模型（RVA_EMBED_MODEL）", key="cfg_embed_model",
+            placeholder="text-embedding-3-small",
+            help="仅 retriever=openai 时使用；不少兼容端点不提供 embeddings 接口。",
+        )
+        # Runs before the widgets are rebuilt, so editing session state here is
+        # legal (doing it inline would raise StreamlitWidgetAlreadyInstantiated).
+        st.button("恢复默认（.env / Secrets）", width="stretch", key="cfg_reset",
+                  on_click=_reset_llm_config)
+
+    # Re-apply on every run: text inputs commit on Enter/blur, so the endpoint in
+    # effect always matches what the boxes show.
+    _apply_llm_config(pristine)
+
     cfg_info = describe()
-    st.caption(f"API key：{cfg_info['openai_api_key']}   模型：{cfg_info['judge_model']}")
+    st.caption(f"API key：{cfg_info['openai_api_key']}")
+    st.caption(f"🔌 端点：{cfg_info['openai_base_url']}　模型：{cfg_info['judge_model']}")
     st.caption(f"🧩 版本：{BUILD_STAMP}")
 
     st.markdown("**Critic（阶段一）**")

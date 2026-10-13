@@ -114,6 +114,10 @@ python run_ui.py             # 等价于：streamlit run app/streamlit_app.py
 接地性与修订/复查六个面板；侧边栏可切换 `critic_backend` / `reviser_backend` / `judge`
 等后端。UI 只是 `rva.validate(...)` 的渲染层，不含任何新校验逻辑。
 
+要用其他 OpenAI 兼容端点（OpenRouter / DeepSeek / 本地 Ollama…）？侧边栏「🔌 模型 / 端点」
+里直接填 **Base URL / 模型 / Embedding 模型**，回车即生效（作用于 critic / NLI / reviser /
+embedding 全部 LLM 轨）；留空则回落到 `.env` / Secrets 的值，「恢复默认」按钮一键还原。
+
 需要导入自己的来源？展开「📥 导入检索到的来源」，粘贴或上传检索工具的输出即可：
 自动识别 JSON / JSONL / CSV / TSV、每行一个 URL、Markdown 链接，以及「标题 + 链接 +
 摘要」的文本块；`link`/`href`、`snippet`/`content`、`score` 等常见字段别名会归一化，

@@ -66,6 +66,33 @@ class TestStreamlitConsole(unittest.TestCase):
         self.assertIn("threshold=0.7", captions)
         self.assertIn("fp=", captions)
 
+    def test_llm_endpoint_inputs_apply_and_reset(self):
+        # The sidebar boxes must steer the LLM tracks (critic / NLI / reviser /
+        # embeddings) without a restart, and "reset" must fall back to .env.
+        import os
+        for k in ("OPENAI_BASE_URL", "RVA_JUDGE_MODEL", "RVA_EMBED_MODEL"):
+            os.environ.pop(k, None)
+        at = AppTest.from_file(str(APP), default_timeout=180)
+        at.run()
+        self.assertEqual([str(e) for e in at.exception], [])
+
+        _find(at.sidebar.text_input, "Base URL").set_value("https://api.deepseek.com/v1")
+        _find(at.sidebar.text_input, "模型").set_value("deepseek-chat")
+        at.run()
+        self.assertEqual([str(e) for e in at.exception], [])
+        self.assertEqual(os.environ.get("OPENAI_BASE_URL"), "https://api.deepseek.com/v1")
+        self.assertEqual(os.environ.get("RVA_JUDGE_MODEL"), "deepseek-chat")
+        captions = " ".join(c.value or "" for c in at.sidebar.caption)
+        self.assertIn("api.deepseek.com/v1", captions)
+        self.assertIn("deepseek-chat", captions)
+
+        _find(at.sidebar.button, "恢复默认").click().run()
+        self.assertEqual([str(e) for e in at.exception], [])
+        self.assertEqual(_find(at.sidebar.text_input, "Base URL").value,
+                         at.session_state["cfg_pristine"]["base_url"])
+        self.assertEqual(os.environ.get("RVA_JUDGE_MODEL"),
+                         at.session_state["cfg_pristine"]["model"])
+
     def test_render_load_and_run(self):
         at = AppTest.from_file(str(APP), default_timeout=180)
         at.run()
